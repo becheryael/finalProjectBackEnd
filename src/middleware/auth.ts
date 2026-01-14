@@ -9,6 +9,7 @@ interface JwtPayload {
 
 const auth = async (req: Request, res: Response, next: NextFunction) => {
   try {
+    // const token = req.header("Authorization")!.replace("Bearer ", "");
     const token = req.header("Authorization")!;
     const decoded = jwt.verify(token, process.env.SECRET!) as JwtPayload;
     const user = await User.findOne({

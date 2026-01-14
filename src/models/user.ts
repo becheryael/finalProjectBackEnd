@@ -14,6 +14,7 @@ export interface UserType extends Document {
   tokens: { token: string }[];
   generateAuthToken: () => Promise<string>;
   isModified: (password: string) => boolean;
+  requests: {}[]
 }
 
 interface UserModel extends mongoose.Model<UserType> {
@@ -23,7 +24,7 @@ interface UserModel extends mongoose.Model<UserType> {
 const PERSONAL_NUM_LENGTH = 7;
 const PASSWORD_LENGTH = 7;
 
-const UserSchema = new mongoose.Schema<UserType>({
+const userSchema = new mongoose.Schema<UserType>({
   name: {
     type: String,
     require: true,
@@ -101,6 +102,12 @@ const UserSchema = new mongoose.Schema<UserType>({
   ],
 });
 
+userSchema.virtual("requests", {
+  ref: "Request",
+  localField: "_id",
+  foreignField: "owner"
+});
+
 // UserSchema.pre(
 //   "save",
 //   async function (next: (error?: Error) => void) {
@@ -113,16 +120,16 @@ const UserSchema = new mongoose.Schema<UserType>({
 //   }
 // );
 
-UserSchema.methods.generateAuthToken = async function () {
+userSchema.methods.generateAuthToken = async function () {
   const user = this;
-  const token = jwt.sign({ _id: user._id.toString() }, process.env.SECRET!, {expiresIn: '600000'});
+  const token = jwt.sign({ _id: user._id.toString() }, process.env.SECRET!, {expiresIn: '1h'});
   user.tokens = user.tokens.concat({ token });
   await user.save();
 
   return token;
 };
 
-UserSchema.statics.findByCredentials = async (email, password) => {
+userSchema.statics.findByCredentials = async (email, password) => {
   const user = await User.findOne({ email });
 
   if (!user) {
@@ -144,6 +151,6 @@ UserSchema.statics.findByCredentials = async (email, password) => {
   return user;
 };
 
-const User = mongoose.model<UserType, UserModel>("User", UserSchema);
+const User = mongoose.model<UserType, UserModel>("User", userSchema);
 
 export default User;

@@ -1,11 +1,11 @@
 /// <reference path="../types/express.d.ts" />
-import express from "express";
-import { Router, Request, Response } from "express";
+import express, { Router, Request, Response } from "express";
 import User from "../models/user";
 import { StatusCodes } from "http-status-codes";
 import auth from "../middleware/auth";
 
 const router: Router = express.Router();
+export default router;
 
 // Create a new user
 router.post("/create", async (req: Request, res: Response) => {
@@ -57,8 +57,6 @@ router.post("/logout", auth, async (req: Request, res: Response) => {
   }
 });
 
-export default router;
-
 // Update a user
 router.patch("/:id", auth, async (req: Request, res: Response) => {
   const userID = req.params.id;
@@ -95,9 +93,16 @@ router.patch("/:id", auth, async (req: Request, res: Response) => {
 //Generate new user token
 router.post("/newToken", auth, async (req: Request, res: Response) => {
   try {
+    //remove old token
+    req.user!.tokens = req.user!.tokens.filter((token) => {
+      return token.token !== req.token;
+    });
+    await req.user!.save();
+    // create new token
     const token = await req.user!.generateAuthToken();
     res.send({ user: req.user!, token });
   } catch (error: any) {
+    console.log(error);
     res.status(StatusCodes.INTERNAL_SERVER_ERROR).send(error.message);
   }
 });
