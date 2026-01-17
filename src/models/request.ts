@@ -3,7 +3,7 @@ import mongoose, { Document } from "mongoose";
 export interface BamRequestType extends Document {
   type: string;
   text: string;
-  approved: boolean;
+  status: string;
   message: string;
   owner: mongoose.Schema.Types.ObjectId;
 }
@@ -20,9 +20,16 @@ const bamRequestSchema = new mongoose.Schema<BamRequestType>(
       required: true,
       trim: true
     },
-    approved: {
-      type: Boolean,
-      default: false
+    status: {
+      type: String,
+      default: 'Awaiting approval',
+      validate(value: string) {
+        if (value !== 'Awaiting approval' && value !== 'Approved' && value !== 'Denied') {
+          throw new Error(
+            'Not valid approval status'
+          );
+        }
+      },
     },
     message: {
       type: String,
