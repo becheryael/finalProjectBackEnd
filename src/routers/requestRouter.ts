@@ -22,7 +22,7 @@ router.post("", auth, async (req, res) => {
 });
 
 router.get("", auth, async (req, res) => {
-  const PAGE_LIMIT = 10;
+  const PAGE_LIMIT = 8;
 
   // USING TYPE any CHECK IF THAT IS OKAY. need it to default match to all.
   let match: any = {};
@@ -99,7 +99,7 @@ router.get("", auth, async (req, res) => {
 });
 
 router.get("/allRequests", auth, async (req, res) => {
-  const PAGE_LIMIT = 10;
+  const PAGE_LIMIT = 8;
 
   if (!req.user!.manager) {
     return res
@@ -165,7 +165,11 @@ router.get("/allRequests", auth, async (req, res) => {
   }
 
   try {
-    const allRequests = await BamRequest.find(match).sort(sort).populate({path: "owner"});
+    const allRequests = await BamRequest.find(match)
+      .sort(sort)
+      .skip(parseInt(req.query.skip as string) * PAGE_LIMIT)
+      .limit(PAGE_LIMIT)
+      .populate({ path: "owner" });
     if (allRequests.length === 0) {
       return res.status(StatusCodes.NOT_FOUND).send("No requests in database.");
     }
