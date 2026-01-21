@@ -30,6 +30,7 @@ const userSchema = new mongoose.Schema<UserType>(
       type: String,
       require: true,
       trim: true,
+      unique: true,
       validate(value: string) {
         if (value === "") {
           throw new Error(`Your name must contain at least one character.`);

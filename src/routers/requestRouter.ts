@@ -1,11 +1,69 @@
 import express, { Router } from "express";
 import BamRequest from "../models/request";
+import User from "../models/user";
 import auth from "../middleware/auth";
 import { StatusCodes } from "http-status-codes";
-import mongoose from "mongoose";
 
 const router: Router = express.Router();
 export default router;
+
+const sortControl = (query: { status: string; type: string; date: string }) => {
+  let match: any = {};
+  let sort: any = {};
+
+  if (query.status) {
+    switch (query.status) {
+      case "Approved":
+        match.status = "Approved";
+        break;
+      case "Denied":
+        match.status = "Denied";
+        break;
+      case "Awaiting approval":
+        match.status = "Awaiting approval";
+        break;
+      default:
+        match = {};
+    }
+  }
+
+  if (query.type) {
+    switch (query.type) {
+      case "Blackening":
+        match.type = "Blackening";
+        break;
+      case "Kidud":
+        match.type = "Kidud";
+        break;
+      case "Let me in":
+        match.type = "Let me in";
+        break;
+      case "Let me in by car or plane":
+        match.type = "Let me in by car or plane";
+        break;
+      case "Sign for me":
+        match.type = "Sign for me";
+        break;
+      default:
+        match = {};
+    }
+  }
+
+  if (query.date) {
+    switch (query.date) {
+      case "newist":
+        sort.createdAt = -1;
+        break;
+      case "oldest":
+        sort.createdAt = 1;
+        break;
+      default:
+        sort = {};
+    }
+  }
+
+  return { match, sort };
+};
 
 // Create a new request
 router.post("", auth, async (req, res) => {
@@ -22,72 +80,25 @@ router.post("", auth, async (req, res) => {
   }
 });
 
+// Get user's requests
 router.get("", auth, async (req, res) => {
-  const PAGE_LIMIT = 8;
-
-  let match: any = {};
-  let sort: any = {};
-
-  if (req.query.status) {
-    switch (req.query.status) {
-      case "Approved":
-        match.status = "Approved";
-        break;
-      case "Denied":
-        match.status = "Denied";
-        break;
-      case "Awaiting approval":
-        match.status = "Awaiting approval";
-        break;
-      default:
-        match = {};
-    }
-  }
-
-  if (req.query.type) {
-    switch (req.query.type) {
-      case "Blackening":
-        match.type = "Blackening";
-        break;
-      case "Kidud":
-        match.type = "Kidud";
-        break;
-      case "Let me in":
-        match.type = "Let me in";
-        break;
-      case "Let me in by car or plane":
-        match.type = "Let me in by car or plane";
-        break;
-      case "Sign for me":
-        match.type = "Sign for me";
-        break;
-      default:
-        match = {};
-    }
-  }
-
-  if (req.query.date) {
-    switch (req.query.date) {
-      case "newist":
-        sort.createdAt = -1;
-        break;
-      case "oldest":
-        sort.createdAt = 1;
-        break;
-      default:
-        sort = {};
-    }
-  }
-
+  const query = {
+    status: req.query.status as string,
+    type: req.query.type as string,
+    date: req.query.date as string
+  };
+  const { match, sort } = sortControl(query);
+  const countMatch = { ...match, owner: req.user!._id };
   try {
-    console.log(match)
-    // const requestCount = await BamRequest.countDocuments({ owner: req.user!._id as mongoose.Types.ObjectId})
+    const requestCount = await BamRequest.countDocuments(countMatch);
     await req.user!.populate({
       path: "requests",
       match,
       options: {
-        // limit: PAGE_LIMIT,
-        // skip: parseInt(req.query.skip as string) * PAGE_LIMIT,
+        limit: parseInt(req.query.limit as string),
+        skip:
+          parseInt(req.query.skip as string) *
+          parseInt(req.query.limit as string),
         sort
       }
     });
@@ -95,15 +106,14 @@ router.get("", auth, async (req, res) => {
     if (req.user!.requests.length === 0) {
       return res.status(StatusCodes.NOT_FOUND).send("No bam requests yet.");
     }
-    res.send(req.user!.requests);
+    res.send({ requestCount, requests: req.user!.requests });
   } catch (error: any) {
     res.status(StatusCodes.INTERNAL_SERVER_ERROR).send(error.message);
   }
 });
 
+// Get all requests
 router.get("/allRequests", auth, async (req, res) => {
-  const PAGE_LIMIT = 8;
-
   if (!req.user!.manager) {
     return res
       .status(StatusCodes.FORBIDDEN)
@@ -112,77 +122,45 @@ router.get("/allRequests", auth, async (req, res) => {
       );
   }
 
-  let match: any = {};
-  let sort: any = {};
+  const query = {
+    status: req.query.status as string,
+    type: req.query.type as string,
+    date: req.query.date as string
+  };
 
-  if (req.query.status) {
-    switch (req.query.status) {
-      case "Approved":
-        match.status = "Approved";
-        break;
-      case "Denied":
-        match.status = "Denied";
-        break;
-      case "Awaiting approval":
-        match.status = "Awaiting approval";
-        break;
-      default:
-        match = {};
-    }
-  }
+  const { match, sort } = sortControl(query);
 
-  if (req.query.type) {
-    switch (req.query.type) {
-      case "Blackening":
-        match.type = "Blackening";
-        break;
-      case "Kidud":
-        match.type = "Kidud";
-        break;
-      case "Let me in":
-        match.type = "Let me in";
-        break;
-      case "Let me in by car or plane":
-        match.type = "Let me in by car or plane";
-        break;
-      case "Sign for me":
-        match.type = "Sign for me";
-        break;
-      default:
-        match = {};
-    }
-  }
-
-  if (req.query.date) {
-    switch (req.query.date) {
-      case "newist":
-        sort.createdAt = -1;
-        break;
-      case "oldest":
-        sort.createdAt = 1;
-        break;
-      default:
-        sort = {};
-    }
-  }
+  let findMatch = { ...match };
 
   try {
-    console.log(match);
+    if (req.query.userSearch) {
+      const user = await User.findOne({
+        name: { $regex: req.query.userSearch as string, $options: "i" }
+      });
+      if (!user) {
+        return res.status(StatusCodes.NOT_FOUND).send("User not found.");
+      }
+      findMatch.owner = user._id;
+    }
 
-    const allRequests = await BamRequest.find(match)
+    const requestCount = await BamRequest.countDocuments(findMatch);
+    const allRequests = await BamRequest.find(findMatch)
       .sort(sort)
-      // .skip(parseInt(req.query.skip as string) * PAGE_LIMIT)
-      // .limit(PAGE_LIMIT)
+      .skip(
+        parseInt(req.query.skip as string) * parseInt(req.query.limit as string)
+      )
+      .limit(parseInt(req.query.limit as string))
       .populate({ path: "owner" });
     if (allRequests.length === 0) {
       return res.status(StatusCodes.NOT_FOUND).send("No requests in database.");
     }
-    res.send(allRequests);
+    res.send({ requestCount, allRequests });
   } catch (error: any) {
     res.status(StatusCodes.INTERNAL_SERVER_ERROR).send(error.message);
   }
 });
 
+// edit request
 router.patch("/:id", auth, async (req, res) => {
   if (!req.user!.manager) {
     return res
@@ -208,14 +186,15 @@ router.patch("/:id", auth, async (req, res) => {
     if (!bamRequest) {
       return res
         .status(StatusCodes.NOT_FOUND)
-        .send("This user does not exist in database");
+        .send("This request does not exist in database");
     }
     updates.forEach((update) => {
       bamRequest.set(update, req.body[update]);
     });
 
-    await bamRequest.save();
-    res.send(bamRequest);
+    const editedRequest = await bamRequest.save();
+    console.log(editedRequest);
+    res.send(editedRequest);
   } catch (error: any) {
     res.status(StatusCodes.BAD_REQUEST).send(error.message);
   }
