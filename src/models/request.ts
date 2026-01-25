@@ -22,14 +22,16 @@ const bamRequestSchema = new mongoose.Schema<BamRequestType>(
     },
     status: {
       type: String,
-      default: 'Awaiting approval',
+      default: "Awaiting approval",
       validate(value: string) {
-        if (value !== 'Awaiting approval' && value !== 'Approved' && value !== 'Denied') {
-          throw new Error(
-            'Not valid approval status'
-          );
+        if (
+          value !== "Awaiting approval" &&
+          value !== "Approved" &&
+          value !== "Denied"
+        ) {
+          throw new Error("Not valid approval status");
         }
-      },
+      }
     },
     message: {
       type: String,
@@ -47,12 +49,6 @@ const bamRequestSchema = new mongoose.Schema<BamRequestType>(
     timestamps: true
   }
 );
-
-// requestSchema.virtual("user", {
-//   ref: "User",
-//   localField: "_id",
-//   foreignField: "request"
-// });
 
 const BamRequest = mongoose.model("Request", bamRequestSchema);
 

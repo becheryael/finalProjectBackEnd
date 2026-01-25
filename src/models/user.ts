@@ -42,10 +42,9 @@ const userSchema = new mongoose.Schema<UserType>(
       require: true,
       trim: true,
       unique: true,
+      match: [/^\d+$/, 'Personal number must contain only digits'],
       validate(value: string) {
-        console.log(Number.isNaN(value));
-        if (Number.isNaN(value) || value.length !== PERSONAL_NUM_LENGTH) {
-          console.log("error");
+        if (value.length !== PERSONAL_NUM_LENGTH) {
           throw new Error(
             `Your personal number must contain exactly ${PERSONAL_NUM_LENGTH} digits.`
           );

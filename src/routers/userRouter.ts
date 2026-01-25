@@ -1,8 +1,13 @@
 /// <reference path="../types/express.d.ts" />
+import nodemailer from "nodemailer";
+import emailTemplate from "../templates/emailTemplate";
 import express, { Router, Request, Response } from "express";
 import User from "../models/user";
 import { StatusCodes } from "http-status-codes";
 import auth from "../middleware/auth";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 const router: Router = express.Router();
 export default router;
@@ -38,7 +43,7 @@ router.post("/login", async (req: Request, res: Response) => {
       req.body.password
     );
     const token = await user.generateAuthToken();
-    res.send({ user: user, token });
+    res.send({ user, token });
   } catch (error: any) {
     res.status(StatusCodes.INTERNAL_SERVER_ERROR).send(error.message);
   }
@@ -57,10 +62,84 @@ router.post("/logout", auth, async (req: Request, res: Response) => {
   }
 });
 
+// User forgot password
+router.post("/forgot-password", async (req: Request, res: Response) => {
+  if (!req.body.email) {
+    res.status(StatusCodes.BAD_REQUEST).send("An email is required");
+  }
+  try {
+    const user = await User.findOne({
+      email: req.body.email
+    });
+    if (!user) {
+      res.status(StatusCodes.BAD_REQUEST).send("User not found");
+    }
+    // Generate a reset token
+    const token = await user!.generateAuthToken();
+    const resetPasswordHTML = emailTemplate(
+      `http://localhost:3000/reset-password/${token}`
+    );
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: process.env.EMAIL,
+        pass: process.env.PASS
+      }
+    });
+    const mailOptions = {
+      from: "BAM APP",
+      to: req.body.email,
+      subject: "Password Reset For Bam App",
+      html: resetPasswordHTML
+    };
+    transporter.sendMail(mailOptions, (error, info) => {
+      if (error) {
+        res
+          .status(StatusCodes.INTERNAL_SERVER_ERROR)
+          .send("Error sending email");
+      } else {
+        res.send("Email sent successfully");
+      }
+    });
+
+    res.send({ token });
+  } catch (error: any) {
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).send(error.message);
+  }
+});
+
+// Update user password
+router.patch("/reset-password", auth, async (req, res) => {
+  req.user!.tokens = req.user!.tokens.filter((token) => {
+    return token.token !== req.token;
+  });
+  const updates = Object.keys(req.body);
+
+  const allowedUpdates = ["password"];
+  const isValidOperation = updates.every((update) =>
+    allowedUpdates.includes(update)
+  );
+
+  if (!isValidOperation) {
+    return res.status(StatusCodes.BAD_REQUEST).send("invalid updates");
+  }
+
+  try {
+    updates.forEach((update) => {
+      req.user!.set(update, req.body[update]);
+    });
+
+    await req.user!.save();
+    const token = await req.user!.generateAuthToken();
+    res.send({ user: req.user!, token });
+  } catch (error: any) {
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).send(error.message);
+  }
+});
+
 // Update a user
 router.patch("/:id", auth, async (req: Request, res: Response) => {
   const userID = req.params.id;
-  console.log(req.body);
 
   const updates = Object.keys(req.body);
   const allowedUpdates = ["name", "email", "personalNum", "avatar"];
