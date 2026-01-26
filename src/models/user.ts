@@ -4,7 +4,7 @@ import bcrypt from "bcrypt";
 import validator from "validator";
 import { NextFunction } from "express";
 
-export interface UserType extends Document {
+export interface UserInterface extends Document {
   name: string;
   personalNum: string;
   email: string;
@@ -17,14 +17,14 @@ export interface UserType extends Document {
   requests: {}[];
 }
 
-interface UserModel extends mongoose.Model<UserType> {
-  findByCredentials(email: string, password: string): Promise<UserType>;
+interface UserModel extends mongoose.Model<UserInterface> {
+  findByCredentials(email: string, password: string): Promise<UserInterface>;
 }
 
 const PERSONAL_NUM_LENGTH = 7;
 const PASSWORD_LENGTH = 7;
 
-const userSchema = new mongoose.Schema<UserType>(
+const userSchema = new mongoose.Schema<UserInterface>(
   {
     name: {
       type: String,
@@ -114,17 +114,17 @@ userSchema.virtual("requests", {
   foreignField: "owner"
 });
 
-// UserSchema.pre(
-//   "save",
-//   async function (next: (error?: Error) => void) {
-//     const user = this;
-//     if (user.isModified("password")) {
-//       user.password = await bcrypt.hash(user.password, 8);
-//     }
+userSchema.pre<UserInterface>(
+  "save",
+  async function (next) {
+    const user = this;
+    if (user.isModified("password")) {
+      user.password = await bcrypt.hash(user.password, 8);
+    }
 
-//     next();
-//   }
-// );
+    // next();
+  }
+);
 
 userSchema.methods.generateAuthToken = async function () {
   const user = this;
@@ -144,13 +144,13 @@ userSchema.statics.findByCredentials = async (email, password) => {
     throw new Error("Unable to login");
   }
 
-  // const isMatch = await bcrypt.compare(password, user.password);
-  let isMatch: boolean;
-  if (password == user.password) {
-    isMatch = true;
-  } else {
-    isMatch = false;
-  }
+  const isMatch = await bcrypt.compare(password, user.password);
+  // let isMatch: boolean;
+  // if (password == user.password) {
+  //   isMatch = true;
+  // } else {
+  //   isMatch = false;
+  // }
 
   if (!isMatch) {
     throw new Error("Unable to login");
@@ -159,6 +159,6 @@ userSchema.statics.findByCredentials = async (email, password) => {
   return user;
 };
 
-const User = mongoose.model<UserType, UserModel>("User", userSchema);
+const User = mongoose.model<UserInterface, UserModel>("User", userSchema);
 
 export default User;

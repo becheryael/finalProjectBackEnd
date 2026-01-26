@@ -11,56 +11,18 @@ const sortControl = (query: { status: string; type: string; date: string }) => {
   let match: any = {};
   let sort: any = {};
 
-  if (query.status) {
-    switch (query.status) {
-      case "Approved":
-        match.status = "Approved";
-        break;
-      case "Denied":
-        match.status = "Denied";
-        break;
-      case "Awaiting approval":
-        match.status = "Awaiting approval";
-        break;
-      default:
-        match = {};
-    }
+  const allowedStatuses = ["Approved", "Denied", "Awaiting approval"];
+  if (query.status && allowedStatuses.includes(query.status)) {
+    match.status = query.status;
   }
 
-  if (query.type) {
-    switch (query.type) {
-      case "Blackening":
-        match.type = "Blackening";
-        break;
-      case "Kidud":
-        match.type = "Kidud";
-        break;
-      case "Let me in":
-        match.type = "Let me in";
-        break;
-      case "Let me in by car or plane":
-        match.type = "Let me in by car or plane";
-        break;
-      case "Sign for me":
-        match.type = "Sign for me";
-        break;
-      default:
-        match = {};
-    }
+  const allowedTypes = ["Blackening", "Kidud", "Let me in", "Let me in by car or plane", "Sign for me"];
+  if (query.type && allowedTypes.includes(query.type)) {
+    match.type = query.type;
   }
 
-  if (query.date) {
-    switch (query.date) {
-      case "newist":
-        sort.createdAt = -1;
-        break;
-      case "oldest":
-        sort.createdAt = 1;
-        break;
-      default:
-        sort = {};
-    }
-  }
+  if (query.date === "newest") sort.createdAt = -1;
+  if (query.date === "oldest") sort.createdAt = 1;
 
   return { match, sort };
 };
@@ -131,6 +93,31 @@ router.get("/allRequests", auth, async (req, res) => {
   const { match, sort } = sortControl(query);
 
   let findMatch = { ...match };
+
+  const isValidDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return !isNaN(date.getTime());
+  };
+
+  if (req.query.startDate && req.query.endDate) {
+    if (
+      !isValidDate(req.query.startDate as string) ||
+      !isValidDate(req.query.endDate as string)
+    ) {
+      return res.status(StatusCodes.BAD_REQUEST).send("Not a valid date.");
+    }
+    const start = new Date(req.query.startDate as string);
+    const end = new Date(req.query.endDate as string);
+    if (start > end) {
+      return res
+        .status(StatusCodes.BAD_REQUEST)
+        .send("Start date must be before end date.");
+    }
+    findMatch.createdAt = {
+      $gte: start,
+      $lte: end
+    };
+  }
 
   try {
     if (req.query.userSearch) {
