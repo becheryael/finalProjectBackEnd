@@ -1,6 +1,6 @@
 import mongoose, { Document } from "mongoose";
 
-export interface BamRequestType extends Document {
+export interface BamRequestInterface extends Document {
   type: string;
   text: string;
   status: string;
@@ -8,7 +8,7 @@ export interface BamRequestType extends Document {
   owner: mongoose.Schema.Types.ObjectId;
 }
 
-const bamRequestSchema = new mongoose.Schema<BamRequestType>(
+const bamRequestSchema = new mongoose.Schema<BamRequestInterface>(
   {
     type: {
       type: String,

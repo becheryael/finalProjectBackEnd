@@ -94,11 +94,9 @@ router.post("/forgot-password", async (req: Request, res: Response) => {
     };
     transporter.sendMail(mailOptions, (error, info) => {
       if (error) {
-        res
+        return res
           .status(StatusCodes.INTERNAL_SERVER_ERROR)
           .send("Error sending email");
-      } else {
-        res.send("Email sent successfully");
       }
     });
 
@@ -181,7 +179,6 @@ router.post("/newToken", auth, async (req: Request, res: Response) => {
     const token = await req.user!.generateAuthToken();
     res.send({ user: req.user!, token });
   } catch (error: any) {
-    console.log(error);
     res.status(StatusCodes.INTERNAL_SERVER_ERROR).send(error.message);
   }
 });

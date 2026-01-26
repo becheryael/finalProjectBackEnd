@@ -3,29 +3,10 @@ import BamRequest from "../models/request";
 import User from "../models/user";
 import auth from "../middleware/auth";
 import { StatusCodes } from "http-status-codes";
+import sortControl from "../utils/sortControl";
 
 const router: Router = express.Router();
 export default router;
-
-const sortControl = (query: { status: string; type: string; date: string }) => {
-  let match: any = {};
-  let sort: any = {};
-
-  const allowedStatuses = ["Approved", "Denied", "Awaiting approval"];
-  if (query.status && allowedStatuses.includes(query.status)) {
-    match.status = query.status;
-  }
-
-  const allowedTypes = ["Blackening", "Kidud", "Let me in", "Let me in by car or plane", "Sign for me"];
-  if (query.type && allowedTypes.includes(query.type)) {
-    match.type = query.type;
-  }
-
-  if (query.date === "newest") sort.createdAt = -1;
-  if (query.date === "oldest") sort.createdAt = 1;
-
-  return { match, sort };
-};
 
 // Create a new request
 router.post("", auth, async (req, res) => {
@@ -49,18 +30,21 @@ router.get("", auth, async (req, res) => {
     type: req.query.type as string,
     date: req.query.date as string
   };
-  const { match, sort } = sortControl(query);
-  const countMatch = { ...match, owner: req.user!._id };
+
+  const DEFAULT_LIMIT = 10;
+  const limit = parseInt(req.query.limit as string) || DEFAULT_LIMIT;
+  const skip = (parseInt(req.query.skip as string) || 0) * limit;
+
   try {
+    const { match, sort } = sortControl(query);
+    const countMatch = { ...match, owner: req.user!._id };
     const requestCount = await BamRequest.countDocuments(countMatch);
     await req.user!.populate({
       path: "requests",
       match,
       options: {
-        limit: parseInt(req.query.limit as string),
-        skip:
-          parseInt(req.query.skip as string) *
-          parseInt(req.query.limit as string),
+        limit,
+        skip,
         sort
       }
     });
@@ -87,39 +71,19 @@ router.get("/allRequests", auth, async (req, res) => {
   const query = {
     status: req.query.status as string,
     type: req.query.type as string,
-    date: req.query.date as string
+    date: req.query.date as string,
+    startDate: req.query.startDate as string,
+    endDate: req.query.endDate as string
   };
 
-  const { match, sort } = sortControl(query);
-
-  let findMatch = { ...match };
-
-  const isValidDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return !isNaN(date.getTime());
-  };
-
-  if (req.query.startDate && req.query.endDate) {
-    if (
-      !isValidDate(req.query.startDate as string) ||
-      !isValidDate(req.query.endDate as string)
-    ) {
-      return res.status(StatusCodes.BAD_REQUEST).send("Not a valid date.");
-    }
-    const start = new Date(req.query.startDate as string);
-    const end = new Date(req.query.endDate as string);
-    if (start > end) {
-      return res
-        .status(StatusCodes.BAD_REQUEST)
-        .send("Start date must be before end date.");
-    }
-    findMatch.createdAt = {
-      $gte: start,
-      $lte: end
-    };
-  }
+  const DEFAULT_LIMIT = 10;
+  const limit = parseInt(req.query.limit as string) || DEFAULT_LIMIT;
+  const skip = (parseInt(req.query.skip as string) || 0) * limit;
 
   try {
+    const { match, sort } = sortControl(query);
+    let findMatch = { ...match };
+
     if (req.query.userSearch) {
       const user = await User.findOne({
         name: { $regex: req.query.userSearch as string, $options: "i" }
@@ -133,11 +97,11 @@ router.get("/allRequests", auth, async (req, res) => {
     const requestCount = await BamRequest.countDocuments(findMatch);
     const allRequests = await BamRequest.find(findMatch)
       .sort(sort)
-      .skip(
-        parseInt(req.query.skip as string) * parseInt(req.query.limit as string)
-      )
-      .limit(parseInt(req.query.limit as string))
-      .populate({ path: "owner" });
+      .skip(skip)
+      .limit(limit)
+      // .populate({ path: "owner" });
+      .populate("owner", "name avatar")
+      .lean();
     if (allRequests.length === 0) {
       return res.status(StatusCodes.NOT_FOUND).send("No requests in database.");
     }
@@ -180,7 +144,6 @@ router.patch("/:id", auth, async (req, res) => {
     });
 
     const editedRequest = await bamRequest.save();
-    console.log(editedRequest);
     res.send(editedRequest);
   } catch (error: any) {
     res.status(StatusCodes.BAD_REQUEST).send(error.message);
