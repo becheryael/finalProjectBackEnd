@@ -1,10 +1,10 @@
-import { UserType } from "../models/user";
+import { UserInterface } from "../models/user";
 
 declare global {
-    declare namespace Express {
-        export interface Request {
-            user?: UserType,
-            token?: string
-        }
+  declare namespace Express {
+    export interface Request {
+      user?: UserInterface;
+      token?: string;
     }
+  }
 }
