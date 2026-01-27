@@ -99,7 +99,6 @@ router.get("/allRequests", auth, async (req, res) => {
       .sort(sort)
       .skip(skip)
       .limit(limit)
-      // .populate({ path: "owner" });
       .populate("owner", "name avatar")
       .lean();
     if (allRequests.length === 0) {

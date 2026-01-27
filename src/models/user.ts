@@ -2,7 +2,6 @@ import mongoose, { Document } from "mongoose";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import validator from "validator";
-import { NextFunction } from "express";
 
 export interface UserInterface extends Document {
   name: string;
@@ -42,7 +41,7 @@ const userSchema = new mongoose.Schema<UserInterface>(
       require: true,
       trim: true,
       unique: true,
-      match: [/^\d+$/, 'Personal number must contain only digits'],
+      match: [/^\d+$/, "Personal number must contain only digits"],
       validate(value: string) {
         if (value.length !== PERSONAL_NUM_LENGTH) {
           throw new Error(
@@ -114,17 +113,12 @@ userSchema.virtual("requests", {
   foreignField: "owner"
 });
 
-userSchema.pre<UserInterface>(
-  "save",
-  async function (next) {
-    const user = this;
-    if (user.isModified("password")) {
-      user.password = await bcrypt.hash(user.password, 8);
-    }
-
-    // next();
+userSchema.pre<UserInterface>("save", async function () {
+  const user = this;
+  if (user.isModified("password")) {
+    user.password = await bcrypt.hash(user.password, 8);
   }
-);
+});
 
 userSchema.methods.generateAuthToken = async function () {
   const user = this;
@@ -145,12 +139,6 @@ userSchema.statics.findByCredentials = async (email, password) => {
   }
 
   const isMatch = await bcrypt.compare(password, user.password);
-  // let isMatch: boolean;
-  // if (password == user.password) {
-  //   isMatch = true;
-  // } else {
-  //   isMatch = false;
-  // }
 
   if (!isMatch) {
     throw new Error("Unable to login");
