@@ -1,20 +1,21 @@
+const ALLOWED_STATUSES = ["Approved", "Denied", "Awaiting approval"];
+const ALLOWED_TYPES = [
+  "Blackening",
+  "Kidud",
+  "Let me in",
+  "Let me in by car or plane",
+  "Sign for me"
+];
+
 const sortControl = (query: any) => {
   let match: any = {};
   let sort: any = {};
 
-  const allowedStatuses = ["Approved", "Denied", "Awaiting approval"];
-  if (query.status && allowedStatuses.includes(query.status)) {
+  if (query.status && ALLOWED_STATUSES.includes(query.status)) {
     match.status = query.status;
   }
 
-  const allowedTypes = [
-    "Blackening",
-    "Kidud",
-    "Let me in",
-    "Let me in by car or plane",
-    "Sign for me"
-  ];
-  if (query.type && allowedTypes.includes(query.type)) {
+  if (query.type && ALLOWED_TYPES.includes(query.type)) {
     match.type = query.type;
   }
 
