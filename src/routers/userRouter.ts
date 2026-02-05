@@ -1,19 +1,15 @@
 /// <reference path="../types/express.d.ts" />
 import nodemailer from "nodemailer";
 import emailTemplate from "../templates/emailTemplate";
-import express, { Router, Request, Response } from "express";
+import express from "express";
 import User from "../models/user";
 import { StatusCodes } from "http-status-codes";
 import auth from "../middleware/auth";
-import dotenv from "dotenv";
 
-dotenv.config();
-
-const router: Router = express.Router();
-export default router;
+const router = express.Router();
 
 // Create a new user
-router.post("/create", async (req: Request, res: Response) => {
+router.post("/create", async (req, res) => {
   try {
     const email = req.body.email;
     const personalNum = req.body.personalNum;
@@ -36,7 +32,7 @@ router.post("/create", async (req: Request, res: Response) => {
 });
 
 // Login user
-router.post("/login", async (req: Request, res: Response) => {
+router.post("/login", async (req, res) => {
   try {
     const user = await User.findByCredentials(
       req.body.email,
@@ -50,7 +46,7 @@ router.post("/login", async (req: Request, res: Response) => {
 });
 
 // Logout user
-router.post("/logout", auth, async (req: Request, res: Response) => {
+router.post("/logout", auth, async (req, res) => {
   try {
     req.user!.tokens = req.user!.tokens.filter((token) => {
       return token.token !== req.token;
@@ -63,7 +59,7 @@ router.post("/logout", auth, async (req: Request, res: Response) => {
 });
 
 // User forgot password
-router.post("/forgot-password", async (req: Request, res: Response) => {
+router.post("/forgot-password", async (req, res) => {
   if (!req.body.email) {
     res.status(StatusCodes.BAD_REQUEST).send("An email is required");
   }
@@ -77,7 +73,7 @@ router.post("/forgot-password", async (req: Request, res: Response) => {
     // Generate a reset token
     const token = await user!.generateAuthToken();
     const resetPasswordHTML = emailTemplate(
-      `http://localhost:3000/reset-password/${token}`
+      `${process.env.FORGOT_PASSWORD_ROUTE}${token}`
     );
     const transporter = nodemailer.createTransport({
       service: "gmail",
@@ -99,48 +95,17 @@ router.post("/forgot-password", async (req: Request, res: Response) => {
           .send("Error sending email");
       }
     });
-
-    res.send({ token });
-  } catch (error: any) {
-    res.status(StatusCodes.INTERNAL_SERVER_ERROR).send(error.message);
-  }
-});
-
-// Update user password
-router.patch("/reset-password", auth, async (req, res) => {
-  req.user!.tokens = req.user!.tokens.filter((token) => {
-    return token.token !== req.token;
-  });
-  const updates = Object.keys(req.body);
-
-  const allowedUpdates = ["password"];
-  const isValidOperation = updates.every((update) =>
-    allowedUpdates.includes(update)
-  );
-
-  if (!isValidOperation) {
-    return res.status(StatusCodes.BAD_REQUEST).send("invalid updates");
-  }
-
-  try {
-    updates.forEach((update) => {
-      req.user!.set(update, req.body[update]);
-    });
-
-    await req.user!.save();
-    const token = await req.user!.generateAuthToken();
-    res.send({ user: req.user!, token });
+    res.send("Email sent");
   } catch (error: any) {
     res.status(StatusCodes.INTERNAL_SERVER_ERROR).send(error.message);
   }
 });
 
 // Update a user
-router.patch("/:id", auth, async (req: Request, res: Response) => {
-  const userID = req.params.id;
-
+router.patch("/update", auth, async (req, res) => {
+  const userID = req.user!._id;
   const updates = Object.keys(req.body);
-  const allowedUpdates = ["name", "email", "personalNum", "avatar"];
+  const allowedUpdates = ["name", "email", "personalNum", "avatar", "password"];
   const isValidOperation = updates.every((update) =>
     allowedUpdates.includes(update)
   );
@@ -160,6 +125,13 @@ router.patch("/:id", auth, async (req: Request, res: Response) => {
       user.set(update, req.body[update]);
     });
 
+    if (Object.keys(req.body).includes("password")) {
+      user.tokens = [];
+      const token = await user.generateAuthToken();
+      await user.save();
+      return res.send({ user, token });
+    }
+
     await user.save();
     res.send(user);
   } catch (error: any) {
@@ -168,7 +140,7 @@ router.patch("/:id", auth, async (req: Request, res: Response) => {
 });
 
 //Generate new user token
-router.post("/newToken", auth, async (req: Request, res: Response) => {
+router.post("/newToken", auth, async (req, res) => {
   try {
     //remove old token
     req.user!.tokens = req.user!.tokens.filter((token) => {
@@ -177,8 +149,10 @@ router.post("/newToken", auth, async (req: Request, res: Response) => {
     await req.user!.save();
     // create new token
     const token = await req.user!.generateAuthToken();
-    res.send({ user: req.user!, token });
+    res.send({ token });
   } catch (error: any) {
     res.status(StatusCodes.INTERNAL_SERVER_ERROR).send(error.message);
   }
 });
+
+export default router;

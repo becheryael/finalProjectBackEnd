@@ -1,10 +1,10 @@
+import dotenv from 'dotenv';
+dotenv.config();
 import express from 'express'
 import "./db/mongoose";
 import userRouter from './routers/userRouter';
 import bamRequestRouter from "./routers/requestRouter"
 import cors from 'cors';
-import dotenv from 'dotenv';
-dotenv.config();
 
 const app = express();
 

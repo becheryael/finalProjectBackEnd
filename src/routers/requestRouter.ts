@@ -1,12 +1,14 @@
-import express, { Router } from "express";
+import express from "express";
 import BamRequest from "../models/request";
 import User from "../models/user";
 import auth from "../middleware/auth";
+import managerAuth from "../middleware/managerAuth";
 import { StatusCodes } from "http-status-codes";
 import sortControl from "../utils/sortControl";
 
-const router: Router = express.Router();
-export default router;
+const router = express.Router();
+
+const DEFAULT_LIMIT = 10;
 
 // Create a new request
 router.post("", auth, async (req, res) => {
@@ -31,7 +33,6 @@ router.get("", auth, async (req, res) => {
     date: req.query.date as string
   };
 
-  const DEFAULT_LIMIT = 10;
   const limit = parseInt(req.query.limit as string) || DEFAULT_LIMIT;
   const skip = (parseInt(req.query.skip as string) || 0) * limit;
 
@@ -59,15 +60,7 @@ router.get("", auth, async (req, res) => {
 });
 
 // Get all requests
-router.get("/allRequests", auth, async (req, res) => {
-  if (!req.user!.manager) {
-    return res
-      .status(StatusCodes.FORBIDDEN)
-      .send(
-        "You must be a manager to complete this action. You are just pathetic :{"
-      );
-  }
-
+router.get("/allRequests", auth, managerAuth, async (req, res) => {
   const query = {
     status: req.query.status as string,
     type: req.query.type as string,
@@ -76,7 +69,6 @@ router.get("/allRequests", auth, async (req, res) => {
     endDate: req.query.endDate as string
   };
 
-  const DEFAULT_LIMIT = 10;
   const limit = parseInt(req.query.limit as string) || DEFAULT_LIMIT;
   const skip = (parseInt(req.query.skip as string) || 0) * limit;
 
@@ -110,16 +102,9 @@ router.get("/allRequests", auth, async (req, res) => {
   }
 });
 
-// edit request
-router.patch("/:id", auth, async (req, res) => {
-  if (!req.user!.manager) {
-    return res
-      .status(StatusCodes.FORBIDDEN)
-      .send(
-        "You must be a manager to complete this action. You are just pathetic :{"
-      );
-  }
-  const RequestID = req.params.id;
+// Edit request
+router.patch("/:id", auth, managerAuth, async (req, res) => {
+  const requestID = req.params.id;
 
   const updates = Object.keys(req.body);
   const allowedUpdates = ["status", "message"];
@@ -132,7 +117,7 @@ router.patch("/:id", auth, async (req, res) => {
   }
 
   try {
-    const bamRequest = await BamRequest.findById(RequestID);
+    const bamRequest = await BamRequest.findById(requestID);
     if (!bamRequest) {
       return res
         .status(StatusCodes.NOT_FOUND)
@@ -148,3 +133,5 @@ router.patch("/:id", auth, async (req, res) => {
     res.status(StatusCodes.BAD_REQUEST).send(error.message);
   }
 });
+
+export default router;

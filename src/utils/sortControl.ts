@@ -33,12 +33,16 @@ const sortControl = (query: any) => {
   }
 
   if (query.date) {
-    if (query.date === "newest") {
-      sort.createdAt = -1;
-    } else if (query.date === "oldest") {
-      sort.createdAt = 1;
+    if (query.date === 1 || query.date === -1) {
+      sort.createdAt = query.date;
     } else {
-      throw new Error("Not a valid sorting parameter");
+      if (query.date === "newest") {
+        sort.createdAt = -1;
+      } else if (query.date === "oldest") {
+        sort.createdAt = 1;
+      } else {
+        throw new Error("Not a valid sorting parameter");
+      }
     }
   }
 

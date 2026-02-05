@@ -8,11 +8,10 @@ export interface UserInterface extends Document {
   personalNum: string;
   email: string;
   avatar: string;
-  manager: boolean;
+  isManager: boolean;
   password: string;
   tokens: { token: string }[];
   generateAuthToken: () => Promise<string>;
-  isModified: (password: string) => boolean;
   requests: {}[];
 }
 
@@ -21,7 +20,7 @@ interface UserModel extends mongoose.Model<UserInterface> {
 }
 
 const PERSONAL_NUM_LENGTH = 7;
-const PASSWORD_LENGTH = 7;
+const MIN_PASSWORD_LENGTH = 7;
 
 const userSchema = new mongoose.Schema<UserInterface>(
   {
@@ -29,7 +28,6 @@ const userSchema = new mongoose.Schema<UserInterface>(
       type: String,
       require: true,
       trim: true,
-      unique: true,
       validate(value: string) {
         if (value === "") {
           throw new Error(`Your name must contain at least one character.`);
@@ -64,33 +62,17 @@ const userSchema = new mongoose.Schema<UserInterface>(
     avatar: {
       type: String,
       default: "koala",
-      validate(value: string) {
-        if (
-          value !== "beaver" &&
-          value !== "deer" &&
-          value !== "koala" &&
-          value !== "raccoon"
-        ) {
-          throw new Error("Not a valid avatar.");
-        }
-      }
+      enum: ["beaver", "deer", "koala", "raccoon"]
     },
-    manager: {
+    isManager: {
       type: Boolean,
       default: false
     },
     password: {
       type: String,
       required: true,
-      minLength: 7,
-      trim: true,
-      validate(value: string) {
-        if (value.length < PASSWORD_LENGTH) {
-          throw new Error(
-            `Your password must contain at least ${PASSWORD_LENGTH} characters.`
-          );
-        }
-      }
+      minLength: MIN_PASSWORD_LENGTH,
+      trim: true
     },
     tokens: [
       {

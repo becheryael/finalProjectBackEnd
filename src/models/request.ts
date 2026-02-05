@@ -23,15 +23,7 @@ const bamRequestSchema = new mongoose.Schema<BamRequestInterface>(
     status: {
       type: String,
       default: "Awaiting approval",
-      validate(value: string) {
-        if (
-          value !== "Awaiting approval" &&
-          value !== "Approved" &&
-          value !== "Denied"
-        ) {
-          throw new Error("Not valid approval status");
-        }
-      }
+      enum: ['Awaiting approval', 'Approved', 'Denied']
     },
     message: {
       type: String,
@@ -44,8 +36,6 @@ const bamRequestSchema = new mongoose.Schema<BamRequestInterface>(
     }
   },
   {
-    toJSON: { virtuals: true },
-    toObject: { virtuals: true },
     timestamps: true
   }
 );
