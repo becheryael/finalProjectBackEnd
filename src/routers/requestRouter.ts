@@ -127,8 +127,8 @@ router.patch("/:id", auth, managerAuth, async (req, res) => {
       bamRequest.set(update, req.body[update]);
     });
 
-    const editedRequest = await bamRequest.save();
-    res.send(editedRequest);
+    await bamRequest.save();
+    res.send(bamRequest);
   } catch (error: any) {
     res.status(StatusCodes.BAD_REQUEST).send(error.message);
   }

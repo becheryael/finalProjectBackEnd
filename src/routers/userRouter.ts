@@ -27,7 +27,7 @@ router.post("/create", async (req, res) => {
     const token = await user.generateAuthToken();
     res.status(StatusCodes.CREATED).send({ user, token });
   } catch (error: any) {
-    res.status(StatusCodes.INTERNAL_SERVER_ERROR).send(error.message);
+    res.status(StatusCodes.BAD_REQUEST).send(error.message);
   }
 });
 
@@ -41,7 +41,7 @@ router.post("/login", async (req, res) => {
     const token = await user.generateAuthToken();
     res.send({ user, token });
   } catch (error: any) {
-    res.status(StatusCodes.INTERNAL_SERVER_ERROR).send(error.message);
+    res.status(StatusCodes.UNAUTHORIZED).send(error.message);
   }
 });
 
